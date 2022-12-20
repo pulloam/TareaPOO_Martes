@@ -5,6 +5,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.media.audiofx.DynamicsProcessing;
 import android.os.Bundle;
@@ -151,27 +152,59 @@ public class MainActivity extends AppCompatActivity {
         indiceActual = -1;
     }
 
-    private void crearBD(){
+    private void ejecutarSQL(){
         AdministradorBaseDatos adbs = new AdministradorBaseDatos(this, "BDPrueba", null, 1);
-        try{
-            SQLiteDatabase miBD = adbs.getWritableDatabase();
-
+        try(SQLiteDatabase miBD = adbs.getWritableDatabase()){
             if(miBD != null){
-                miBD.execSQL("insert into equipos (serie, descripcion) values(" + tilSerie.getEditText().getText().toString()  + ", 'Equipo 222')");
+                Cursor c = miBD.rawQuery("Select * from equipos order by serie", null);
+
+                if(c.moveToFirst()){
+                    Log.d("TAG_", "Registros obtenidos :" + c.getCount());
+                    do{
+                        Log.d("TAG_", "_____________________________________");
+                        Equipo e = new Equipo();
+                        e.setSerie(c.getInt(0));
+                        Log.d("TAG_", "Serie " + c.getInt(0));
+                        Log.d("TAG_", "Descripcion " + c.getString(1));
+                        Log.d("TAG_", "Valor " + c.getInt(2));
+
+                    }while(c.moveToNext());
+                }else
+                    Toast.makeText(this, "No hay registros que mostrar", Toast.LENGTH_SHORT).show();
             }
-
-            ContentValues registro = new ContentValues();
-            registro.put("serie", 444);
-            registro.put("descripcion", "Equipo 444");
-
-            Log.d("TAG_", "Insertado " + miBD.insert("equipos", null, registro));
-            miBD.close();
         }catch (Exception ex){
             Log.e("TAG_", ex.toString());
         }
+    }
 
+    private void crearBD(){
+        AdministradorBaseDatos adbs = new AdministradorBaseDatos(this, "BDPrueba", null, 1);
+        try(SQLiteDatabase miBD = adbs.getWritableDatabase()){
+            if(miBD != null){
+                //Forma clásica DML
+                String[] parametros = new String[3];
+                parametros[0] = tilSerie.getEditText().getText().toString();
+                parametros[1] = tilDescrip.getEditText().getText().toString();
+                parametros[2] = tilValor.getEditText().getText().toString();
 
+                miBD.execSQL("insert into equipos (serie, descripcion, valor) " +
+                        "values(?,?,?)", parametros);
+            }
 
+            /*
+            //Forma API android
+            ContentValues registro = new ContentValues();
+            registro.put("serie", tilSerie.getEditText().getText().toString());
+            registro.put("descripcion", tilDescrip.getEditText().getText().toString());
+            registro.put("valor", tilValor.getEditText().getText().toString());
+            Log.d("TAG_", "Insertado " + miBD.insert("equipos", null, registro));
+            */
+
+            miBD.close();
+            ejecutarSQL();
+        }catch (Exception ex){
+            Log.e("TAG_", ex.toString());
+        }
     }
 
     private void eventos() {
